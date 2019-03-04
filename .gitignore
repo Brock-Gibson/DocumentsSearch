@@ -21,10 +21,7 @@ xcuserdata/
 *.moved-aside
 *.xccheckout
 *.xcscmblueprint
-<<<<<<< HEAD
-=======
 .DS_Store
->>>>>>> First Commit
 
 ## Obj-C/Swift specific
 *.hmap
