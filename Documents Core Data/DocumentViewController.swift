@@ -9,23 +9,45 @@
 import UIKit
 import CoreData
 
-class DocumentViewController: UITableViewController {
+class DocumentViewController: UIViewController, UITableViewDataSource, UITableViewDelegate, UISearchResultsUpdating
+{
 
     @IBOutlet var documentTableView: UITableView!
     
+    let searchController = UISearchController(searchResultsController: nil)
+
     let dateFormatter = DateFormatter()
     
     var documents = [Document]()
-    
+    var filteredDocuments = [Document]()
+    var baseDocuments = [Document]()
+
     override func viewDidLoad() {
         super.viewDidLoad()
         
-        self.tableView.rowHeight = 70
-        self.tableView.delegate = self
-        self.tableView.dataSource = self
+        documentTableView.dataSource = self
+        documentTableView.delegate = self
+        documentTableView.rowHeight = 70
+        
+        searchController.searchResultsUpdater = self
+        searchController.hidesNavigationBarDuringPresentation = false
+        searchController.searchBar.placeholder = "Search Documents"
+        searchController.dimsBackgroundDuringPresentation = false
+        navigationItem.searchController = searchController
+        definesPresentationContext = true
         
         dateFormatter.timeStyle = .medium
         dateFormatter.dateStyle = .medium
+        
+    }
+    
+    func searchBarIsEmpty() -> Bool {
+        // Returns true if the text is empty or nil
+        return searchController.searchBar.text?.isEmpty ?? true
+    }
+    
+    func isFiltering() -> Bool {
+        return searchController.isActive && !searchBarIsEmpty()
     }
 
     override func viewWillAppear(_ animated: Bool) {
@@ -44,18 +66,42 @@ class DocumentViewController: UITableViewController {
         catch {
             print("Fetch could not be performed")
         }
-
+        baseDocuments = documents
     }
     
-    override func numberOfSections(in tableView: UITableView) -> Int {
+    func updateSearchResults(for searchController: UISearchController) {
+        let searchText = searchController.searchBar.text
+        var names = [Document]()
+        var content = [Document]()
+        if searchText != nil{
+            names = baseDocuments.filter({(doc : Document) -> Bool in
+                return (doc.name?.lowercased().contains(searchText!.lowercased()))!})
+            content = baseDocuments.filter({(doc : Document) -> Bool in
+                return (doc.content?.lowercased().contains(searchText!.lowercased()))!})
+            filteredDocuments = Array(Set(names + content))
+            if filteredDocuments.count > 0{
+                documents = filteredDocuments
+            }
+            else {
+                documents = baseDocuments
+            }
+            documentTableView.reloadData()
+        }
+        return
+    }
+    
+    func numberOfSections(in tableView: UITableView) -> Int {
         return 1
     }
     
-    override func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
+    func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
+        if isFiltering() {
+            return filteredDocuments.count
+        }
         return documents.count
     }
     
-    override func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
+    func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         let cell = documentTableView.dequeueReusableCell(withIdentifier: "documentCell", for: indexPath)
         
         let document = documents[indexPath.row]
@@ -85,13 +131,13 @@ class DocumentViewController: UITableViewController {
         }
     }
     
-    override func tableView(_ tableView: UITableView, commit editingStyle: UITableViewCell.EditingStyle, forRowAt indexPath: IndexPath) {
+    func tableView(_ tableView: UITableView, commit editingStyle: UITableViewCell.EditingStyle, forRowAt indexPath: IndexPath) {
         if editingStyle == .delete {
             deleteDocument(at: indexPath)
         }
     }
     
-    override func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
+    func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
         performSegue(withIdentifier: "toDetail", sender: self)
     }
     
